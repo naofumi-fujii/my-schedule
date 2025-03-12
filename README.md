@@ -24,7 +24,7 @@ Googleカレンダーのイベントを表示し、営業時間内の空き時�
 
 2. 必要な依存関係をインストール:
    ```bash
-   pip install --upgrade google-api-python-client oauth2client python-dateutil pytz
+   pip install -r requirements.txt
    ```
 
 3. Google Calendar APIの認証情報を設定:
@@ -32,6 +32,16 @@ Googleカレンダーのイベントを表示し、営業時間内の空き時�
    - 新しいプロジェクトを作成し、Google Calendar APIを有効化
    - 認証情報（OAuthクライアントID）を作成
    - 認証情報JSONファイルをダウンロードし、プロジェクトディレクトリに`client_secret.json`として保存
+
+## テスト実行
+
+```bash
+# テストの実行
+pytest test_main.py
+
+# 詳細な出力でテストを実行
+pytest test_main.py -v
+```
 
 ## 使用方法
 
