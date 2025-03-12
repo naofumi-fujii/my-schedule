@@ -253,7 +253,9 @@ def main():
                     duration_hours = duration_minutes / 60
                     # Get day of week in Japanese
                     weekday_jp = ["月", "火", "水", "木", "金", "土", "日"][start.weekday()]
-                    print(f"{start.strftime('%Y-%m-%d')}({weekday_jp}) {start.strftime('%H:%M')} - {end.strftime('%H:%M')} ({duration_hours:.1f}時間)")
+                    
+                    # Always show date, time without individual slot duration
+                    print(f"{start.strftime('%Y-%m-%d')}({weekday_jp}) {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
                 
                 # Show total hours if requested
                 if getattr(flags, 'show_total_hours', False):
