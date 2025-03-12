@@ -1,0 +1,23 @@
+# Google API credentials
+client_secret.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Credentials storage
+.credentials/
+
+# OS specific
+.DS_Store
