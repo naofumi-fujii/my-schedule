@@ -15,13 +15,13 @@ import json
 try:
     import argparse
     parser = argparse.ArgumentParser(parents=[tools.argparser])
-    parser.add_argument('--format', default='text', choices=['text', 'json'],
+    parser.add_argument('--format', '-f', default='text', choices=['text', 'json'],
                       help='Output format: text or json')
-    parser.add_argument('--available-slots', action='store_true',
+    parser.add_argument('--available-slots', '-a', action='store_true',
                       help='Show available time slots during business hours (10:00-18:00)')
-    parser.add_argument('--show-total-hours', action='store_true',
+    parser.add_argument('--show-total-hours', '-t', action='store_true',
                       help='Show total available hours when using --available-slots')
-    parser.add_argument('--weekday-lang', default='ja', choices=['ja', 'en'],
+    parser.add_argument('--weekday-lang', '-w', default='ja', choices=['ja', 'en'],
                       help='Weekday language: ja (Japanese) or en (English)')
     # Only parse args when run as script, not when imported
     flags = None
