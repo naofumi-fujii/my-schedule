@@ -21,7 +21,8 @@ try:
                       help='Show available time slots during business hours (10:00-18:00)')
     parser.add_argument('--show-total-hours', action='store_true',
                       help='Show total available hours when using --available-slots')
-    flags = parser.parse_args()
+    # Only parse args when run as script, not when imported
+    flags = None
 except ImportError:
     flags = None
 
@@ -180,6 +181,11 @@ def main():
     Creates a Google Calendar API service object and outputs events for the next
     2 weeks on the user's calendar.
     """
+    # Parse arguments when main is called
+    global flags
+    if flags is None:
+        flags = parser.parse_args()
+        
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
