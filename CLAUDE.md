@@ -1,0 +1,22 @@
+# my-schedule Development Guidelines
+
+## Commands
+- Run script: `python main.py` (default shows next 2 weeks of events)
+- Show available slots: `python main.py --available-slots`
+- Show available slots with total hours: `python main.py --available-slots --show-total-hours`
+- JSON output: `python main.py --format json`
+- Lint code: `python -m flake8 main.py` (recommended to install)
+- Type check: `python -m mypy main.py` (recommended to install)
+
+## Setup
+- Install dependencies: `pip install -r requirements.txt`
+- Create client_secret.json (from Google Calendar API Console)
+
+## Code Style
+- Imports: Group standard library, third-party, and local imports with blank lines between groups
+- Docstrings: Use Google-style docstrings with Args/Returns sections
+- Formatting: 4-space indentation, max line length 100
+- Error handling: Use try/except for potential errors, provide clear error messages
+- Timezone: All dates should be properly converted to JST for display
+- Variable naming: snake_case for variables/functions, UPPER_CASE for constants
+- Comments: Add comments for complex logic blocks or timezone conversions
