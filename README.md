@@ -65,6 +65,15 @@ python main.py --available-slots --show-total-hours
 python main.py --format json
 ```
 
+### Change Weekday Language (Default: Japanese)
+```bash
+# Show weekdays in English
+python main.py --weekday-lang en
+
+# Show weekdays in Japanese (default)
+python main.py --weekday-lang ja
+```
+
 ## Example Output
 
 ```

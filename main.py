@@ -21,6 +21,8 @@ try:
                       help='Show available time slots during business hours (10:00-18:00)')
     parser.add_argument('--show-total-hours', action='store_true',
                       help='Show total available hours when using --available-slots')
+    parser.add_argument('--weekday-lang', default='ja', choices=['ja', 'en'],
+                      help='Weekday language: ja (Japanese) or en (English)')
     # Only parse args when run as script, not when imported
     flags = None
 except ImportError:
@@ -220,20 +222,27 @@ def main():
                     total_minutes += duration_minutes
                     
                     # Format as JSON
-                    # Get day of week in Japanese
-                    weekday_jp = ["月", "火", "水", "木", "金", "土", "日"][start.weekday()]
+                    # Get day of week in Japanese or English based on setting
+                    weekday_ja = ["月", "火", "水", "木", "金", "土", "日"]
+                    weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    
+                    if getattr(flags, 'weekday_lang', 'ja') == 'ja':
+                        weekday_display = weekday_ja[start.weekday()]
+                    else:
+                        weekday_display = weekday_en[start.weekday()]
+                        
                     json_slots.append({
                         "start": {
                             "date": start.strftime('%Y-%m-%d'),
                             "time": start.strftime('%H:%M'),
                             "formatted": start.strftime('%Y-%m-%d %H:%M'),
-                            "weekday": weekday_jp
+                            "weekday": weekday_display
                         },
                         "end": {
                             "date": end.strftime('%Y-%m-%d'),
                             "time": end.strftime('%H:%M'),
                             "formatted": end.strftime('%Y-%m-%d %H:%M'),
-                            "weekday": weekday_jp
+                            "weekday": weekday_display
                         },
                         "duration_minutes": duration_minutes
                     })
@@ -257,16 +266,25 @@ def main():
                     duration_minutes = int((end - start).total_seconds() / 60)
                     total_minutes += duration_minutes
                     duration_hours = duration_minutes / 60
-                    # Get day of week in Japanese
-                    weekday_jp = ["月", "火", "水", "木", "金", "土", "日"][start.weekday()]
+                    # Get day of week in Japanese or English based on setting
+                    weekday_ja = ["月", "火", "水", "木", "金", "土", "日"]
+                    weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    
+                    if getattr(flags, 'weekday_lang', 'ja') == 'ja':
+                        weekday_display = weekday_ja[start.weekday()]
+                    else:
+                        weekday_display = weekday_en[start.weekday()]
                     
                     # Always show date, time without individual slot duration
-                    print(f"{start.strftime('%Y-%m-%d')}({weekday_jp}) {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
+                    print(f"{start.strftime('%Y-%m-%d')}({weekday_display}) {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
                 
                 # Show total hours if requested
                 if getattr(flags, 'show_total_hours', False):
                     total_hours = total_minutes / 60
-                    print(f"\n合計空き時間: {total_hours:.1f}時間")
+                    if getattr(flags, 'weekday_lang', 'ja') == 'ja':
+                        print(f"\n合計空き時間: {total_hours:.1f}時間")
+                    else:
+                        print(f"\nTotal available hours: {total_hours:.1f} hours")
         
         return
     
