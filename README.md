@@ -1,58 +1,58 @@
 # my-schedule
 
-A Python tool to view Google Calendar events and find available time slots during business hours. The tool displays upcoming calendar events and can identify free time slots between meetings.
+Googleカレンダーのイベントを表示し、営業時間内の空き時間を見つけるためのPythonツールです。今後2週間の予定を表示したり、ミーティングの間の空き時間を特定したりすることができます。
 
-## Features
+## 特徴
 
-- View upcoming events from your Google Calendar for the next 2 weeks
-- Find available time slots during business hours (10:00-18:00 JST) on weekdays
-- Calculate total available hours
-- Output in both text and JSON formats
-- Considers 30-minute buffers before and after meetings
-- Only shows time slots of 1 hour or more
+- Googleカレンダーの今後2週間のイベントを表示
+- 平日の営業時間（10:00-18:00 JST）内の空き時間を検索
+- 利用可能な合計時間を計算
+- テキスト形式とJSON形式の両方で出力可能
+- ミーティングの前後に30分のバッファを考慮
+- 1時間以上の空き時間のみを表示
 
-## Installation
+## インストール方法
 
-1. Clone the repository:
+1. リポジトリをクローン:
    ```bash
    git clone https://github.com/naofumi-fujii/my-schedule.git
    cd my-schedule
    ```
 
-2. Install required dependencies:
+2. 必要な依存関係をインストール:
    ```bash
    pip install --upgrade google-api-python-client oauth2client python-dateutil pytz
    ```
 
-3. Set up Google Calendar API credentials:
-   - Go to the [Google Developers Console](https://console.developers.google.com/)
-   - Create a new project and enable the Google Calendar API
-   - Create credentials (OAuth client ID)
-   - Download the credentials JSON file and save it as `client_secret.json` in the project directory
+3. Google Calendar APIの認証情報を設定:
+   - [Google Developers Console](https://console.developers.google.com/)にアクセス
+   - 新しいプロジェクトを作成し、Google Calendar APIを有効化
+   - 認証情報（OAuthクライアントID）を作成
+   - 認証情報JSONファイルをダウンロードし、プロジェクトディレクトリに`client_secret.json`として保存
 
-## Usage
+## 使用方法
 
-### Basic usage (view upcoming events)
+### 基本的な使い方（今後のイベントを表示）
 ```bash
 python main.py
 ```
 
-### Find available slots
+### 空き時間を検索
 ```bash
 python main.py --available-slots
 ```
 
-### Find available slots and show total hours
+### 空き時間を検索して合計時間を表示
 ```bash
 python main.py --available-slots --show-total-hours
 ```
 
-### Output in JSON format
+### JSON形式で出力
 ```bash
 python main.py --format json
 ```
 
-## Example Output
+## 出力例
 
 ```
 Finding available time slots (weekdays, 10:00-18:00) for the next 2 weeks
@@ -65,6 +65,6 @@ Found 15 available time slots:
 合計空き時間: 42.5時間
 ```
 
-## License
+## ライセンス
 
 MIT License
