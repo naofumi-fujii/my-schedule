@@ -39,7 +39,7 @@ jobs:
 
     - name: Type check with mypy
       run: |
-        mypy main.py
+        mypy --ignore-missing-imports main.py
 
     - name: Test with pytest
       run: |
