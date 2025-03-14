@@ -8,6 +8,7 @@ A Python tool for displaying Google Calendar events and finding available time s
 ## Features
 
 - Display Google Calendar events for the next 2 weeks
+- Automatically exclude holidays by default
 - Find available time slots during business hours (10:00-18:00 JST) on weekdays
 - Calculate total available hours
 - Output in both text and JSON formats
@@ -72,6 +73,15 @@ python main.py --weekday-lang en
 
 # Show weekdays in Japanese (default)
 python main.py --weekday-lang ja
+```
+
+### Include Holidays (Excluded by Default)
+```bash
+# Include holidays in results
+python main.py --include-holidays
+
+# Find available slots including holidays
+python main.py --available-slots --include-holidays
 ```
 
 ## Example Output

@@ -23,6 +23,8 @@ try:
                       help='Show total available hours when using --available-slots')
     parser.add_argument('--weekday-lang', '-w', default='ja', choices=['ja', 'en'],
                       help='Weekday language: ja (Japanese) or en (English)')
+    parser.add_argument('--include-holidays', action='store_true',
+                      help='Include holidays in results (holidays are excluded by default)')
     # Only parse args when run as script, not when imported
     flags = None
 except ImportError:
@@ -33,6 +35,41 @@ except ImportError:
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
+
+# Japanese holiday calendar ID
+HOLIDAY_CALENDAR_ID = 'ja.japanese#holiday@group.v.calendar.google.com'
+
+def is_holiday(service, date):
+    """Check if the given date is a holiday.
+    
+    Args:
+        service: Google Calendar API service object
+        date: Date to check (datetime object)
+        
+    Returns:
+        Boolean indicating if date is a holiday
+    """
+    # Convert to JST
+    jst = pytz.timezone('Asia/Tokyo')
+    date_jst = date.astimezone(jst)
+    
+    # Set time to midnight
+    start_date = date_jst.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = start_date + datetime.timedelta(days=1)
+    
+    # Convert back to UTC for API
+    start_str = start_date.astimezone(pytz.UTC).isoformat()
+    end_str = end_date.astimezone(pytz.UTC).isoformat()
+    
+    # Query holiday calendar
+    events_result = service.events().list(
+        calendarId=HOLIDAY_CALENDAR_ID,
+        timeMin=start_str,
+        timeMax=end_str,
+        singleEvents=True).execute()
+    
+    events = events_result.get('items', [])
+    return len(events) > 0
 
 
 def get_credentials():
@@ -63,13 +100,14 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
-def find_available_slots(service, start_date, end_date):
+def find_available_slots(service, start_date, end_date, include_holidays=False):
     """Find available time slots (1 hour or more with 30 min buffer) during business hours (10:00-18:00) on weekdays.
     
     Args:
         service: Google Calendar API service object
         start_date: Start date to search from (datetime object)
         end_date: End date to search to (datetime object)
+        include_holidays: Whether to include holidays in results (default: False)
         
     Returns:
         List of available time slots
@@ -124,6 +162,11 @@ def find_available_slots(service, start_date, end_date):
     while current_date <= end_date_jst:
         # Check if it's a weekday (0=Monday, 6=Sunday)
         if current_date.weekday() < 5:  # Monday to Friday
+            # Skip holidays unless specifically included
+            if not include_holidays and is_holiday(service, current_date):
+                current_date += datetime.timedelta(days=1)
+                continue
+                
             # Business hours 10:00-18:00 (but effective range is 10:30-17:30 due to buffer)
             day_start = current_date.replace(hour=10, minute=0, second=0, microsecond=0)
             day_end = current_date.replace(hour=18, minute=0, second=0, microsecond=0)
@@ -200,8 +243,12 @@ def main():
     
     # Handle available slots option
     if getattr(flags, 'available_slots', False):
+        include_holidays = getattr(flags, 'include_holidays', False)
         print('Finding available time slots (weekdays, 10:00-18:00) for the next 2 weeks')
-        available_slots = find_available_slots(service, now, two_weeks_later)
+        if not include_holidays:
+            print('Holidays are excluded. Use --include-holidays to include them.')
+            
+        available_slots = find_available_slots(service, now, two_weeks_later, include_holidays)
         
         output_format = getattr(flags, 'format', 'text')
         jst = pytz.timezone('Asia/Tokyo')
@@ -289,11 +336,38 @@ def main():
         return
     
     # Otherwise show the calendar events
+    include_holidays = getattr(flags, 'include_holidays', False)
     print('Getting events for the next 2 weeks')
+    if not include_holidays:
+        print('Holidays are excluded. Use --include-holidays to include them.')
+    
     eventsResult = service.events().list(
         calendarId='primary', timeMin=now_str, timeMax=two_weeks_later_str, 
         singleEvents=True, orderBy='startTime').execute()
     events = eventsResult.get('items', [])
+    
+    # Filter out events on holidays if needed
+    if not include_holidays:
+        filtered_events = []
+        for event in events:
+            # Get event start date
+            start_str = event['start'].get('dateTime', event['start'].get('date'))
+            
+            # Parse the date
+            if 'T' in start_str:  # dateTime format
+                event_date = date_parser.parse(start_str)
+            else:  # date format
+                event_date = datetime.datetime.strptime(start_str, '%Y-%m-%d')
+                event_date = datetime.datetime.combine(
+                    event_date.date(), 
+                    datetime.time(0, 0, 0, tzinfo=pytz.UTC)
+                )
+            
+            # Skip events on holidays
+            if not is_holiday(service, event_date):
+                filtered_events.append(event)
+        
+        events = filtered_events
 
     jst = pytz.timezone('Asia/Tokyo')
     output_format = getattr(flags, 'format', 'text')  # デフォルトはテキスト形式
