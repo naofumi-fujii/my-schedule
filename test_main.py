@@ -2,11 +2,8 @@ import unittest
 from unittest.mock import patch, MagicMock
 import datetime
 import pytz
-import json
 from io import StringIO
-import sys
 
-import main
 from main import find_available_slots
 
 
