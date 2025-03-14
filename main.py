@@ -379,7 +379,6 @@ def main():
                 for start, end in available_slots:
                     duration_minutes = int((end - start).total_seconds() / 60)
                     total_minutes += duration_minutes
-                    duration_hours = duration_minutes / 60
                     # Get day of week in Japanese or English based on setting
                     weekday_ja = ["月", "火", "水", "木", "金", "土", "日"]
                     weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
