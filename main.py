@@ -26,8 +26,10 @@ try:
     parser.add_argument(
         "--available-slots",
         "-a",
-        action="store_true",
-        help="Show available time slots during business hours (10:00-18:00)",
+        nargs="?",
+        const=1,
+        type=float,
+        help="Show available time slots during business hours (10:00-18:00) with optional minimum hours (e.g. -a 2 for 2+ hours)",
     )
     parser.add_argument(
         "--show-total-hours",
@@ -128,14 +130,15 @@ def get_credentials():
     return credentials
 
 
-def find_available_slots(service, start_date, end_date, include_holidays=False):
-    """Find available time slots (1 hour or more with 30 min buffer) during business hours (10:00-18:00) on weekdays.
+def find_available_slots(service, start_date, end_date, include_holidays=False, min_hours=1):
+    """Find available time slots (minimum specified hours with 30 min buffer) during business hours (10:00-18:00) on weekdays.
 
     Args:
         service: Google Calendar API service object
         start_date: Start date to search from (datetime object)
         end_date: End date to search to (datetime object)
         include_holidays: Whether to include holidays in results (default: False)
+        min_hours: Minimum duration in hours for available slots (default: 1)
 
     Returns:
         List of available time slots
@@ -243,8 +246,8 @@ def find_available_slots(service, start_date, end_date, include_holidays=False):
             else:
                 # Check time before first meeting
                 if day_busy_periods[0][0] > effective_day_start + datetime.timedelta(
-                    hours=1
-                ):  # At least 1h after effective start
+                    hours=min_hours
+                ):  # At least min_hours after effective start
                     available_slots.append(
                         (
                             effective_day_start,
@@ -261,14 +264,14 @@ def find_available_slots(service, start_date, end_date, include_holidays=False):
                         minutes=30
                     )  # 30min buffer before
 
-                    # If gap is at least 1 hour
-                    if gap_end - gap_start >= datetime.timedelta(hours=1):
+                    # If gap is at least the minimum required hours
+                    if gap_end - gap_start >= datetime.timedelta(hours=min_hours):
                         available_slots.append((gap_start, gap_end))
 
                 # Check time after last meeting
                 if effective_day_end > day_busy_periods[-1][1] + datetime.timedelta(
-                    hours=1
-                ):  # At least 1h before effective end
+                    hours=min_hours
+                ):  # At least min_hours before effective end
                     available_slots.append(
                         (
                             day_busy_periods[-1][1] + datetime.timedelta(minutes=30),
@@ -293,10 +296,9 @@ def main():
         flags = parser.parse_args()
 
     # If no arguments are provided, print help and exit
-    if len(vars(flags)) == 0 or (not any([
-            getattr(flags, "available_slots", False),
-            getattr(flags, "include_holidays", False)
-        ]) and getattr(flags, "format", "text") == "text" and 
+    if len(vars(flags)) == 0 or (getattr(flags, "available_slots", False) is False and
+        not getattr(flags, "include_holidays", False) and 
+        getattr(flags, "format", "text") == "text" and 
         getattr(flags, "weekday_lang", "ja") == "ja"):
         parser.print_help()
         return
@@ -312,16 +314,17 @@ def main():
     two_weeks_later_str = two_weeks_later.isoformat() + "Z"
 
     # Handle available slots option
-    if getattr(flags, "available_slots", False):
+    if getattr(flags, "available_slots", False) is not False:
         include_holidays = getattr(flags, "include_holidays", False)
+        min_hours = float(getattr(flags, "available_slots", 1))
         print(
-            "Finding available time slots (weekdays, 10:00-18:00) for the next 2 weeks"
+            f"Finding available time slots (weekdays, 10:00-18:00) of {min_hours}+ hours for the next 2 weeks"
         )
         if not include_holidays:
             print("Holidays are excluded. Use --include-holidays to include them.")
 
         available_slots = find_available_slots(
-            service, now, two_weeks_later, include_holidays
+            service, now, two_weeks_later, include_holidays, min_hours
         )
 
         output_format = getattr(flags, "format", "text")
