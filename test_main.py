@@ -14,7 +14,7 @@ class TestMySchedule(unittest.TestCase):
     @patch("sys.stdout", new_callable=StringIO)
     @patch("main.get_credentials")
     @patch("main.discovery.build")
-    def test_main_no_events(self, mock_build, mock_get_credentials, mock_stdout):
+    def test_main_available_slots_empty_calendar(self, mock_build, mock_get_credentials, mock_stdout):
         # Import main here to avoid issues with the test runner
         import main as main_module
 
@@ -29,13 +29,16 @@ class TestMySchedule(unittest.TestCase):
         mock_build.return_value = mock_service
 
         try:
-            # Run with test args
-            with patch("sys.argv", ["main.py"]):
+            # Run with --available-slots to check available time slots
+            with patch("sys.argv", ["main.py", "--available-slots"]):
                 from main import main
-
                 main()
 
-            self.assertIn("No upcoming events found", mock_stdout.getvalue())
+            # Check that available slots were found and formatted correctly
+            output = mock_stdout.getvalue()
+            self.assertIn("Finding available time slots (weekdays, 10:00-18:00)", output)
+            self.assertIn("Found", output)
+            self.assertIn("10:30 - 17:30", output)  # Should find full day slots
         finally:
             # Restore original is_holiday function
             main_module.is_holiday = original_is_holiday
