@@ -292,6 +292,15 @@ def main():
     if flags is None:
         flags = parser.parse_args()
 
+    # If no arguments are provided, print help and exit
+    if len(vars(flags)) == 0 or (not any([
+            getattr(flags, "available_slots", False),
+            getattr(flags, "include_holidays", False)
+        ]) and getattr(flags, "format", "text") == "text" and 
+        getattr(flags, "weekday_lang", "ja") == "ja"):
+        parser.print_help()
+        return
+
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build("calendar", "v3", http=http)
