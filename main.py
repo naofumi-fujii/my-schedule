@@ -1,6 +1,7 @@
 from __future__ import print_function
 import httplib2
 import os
+import sys
 
 from apiclient import discovery
 from oauth2client import client
@@ -295,11 +296,8 @@ def main():
     if flags is None:
         flags = parser.parse_args()
 
-    # If no arguments are provided, print help and exit
-    if len(vars(flags)) == 0 or (getattr(flags, "available_slots", False) is False and
-        not getattr(flags, "include_holidays", False) and 
-        getattr(flags, "format", "text") == "text" and 
-        getattr(flags, "weekday_lang", "ja") == "ja"):
+    # 引数が指定されていない場合はヘルプを表示して終了
+    if len(sys.argv) == 1:
         parser.print_help()
         return
 
