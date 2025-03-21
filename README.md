@@ -13,7 +13,8 @@ A Python tool for displaying Google Calendar events and finding available time s
 - Calculate total available hours
 - Output in both text and JSON formats
 - Consider 30-minute buffers before and after meetings
-- Show only time slots that are at least 1 hour long
+- Show only time slots that meet minimum duration requirements (default: 1 hour)
+- Specify minimum duration for available time slots
 
 ## Installation
 
@@ -54,11 +55,29 @@ python main.py
 ### Find Available Time Slots
 ```bash
 python main.py --available-slots
+# or using short form
+python main.py -a
+```
+
+### Find Available Time Slots with Minimum Duration
+```bash
+# Find slots with at least 2 hours available
+python main.py --available-slots 2
+# or using short form
+python main.py -a 2
+
+# Find slots with at least 1.5 hours available
+python main.py -a 1.5
 ```
 
 ### Find Available Time Slots and Show Total Hours
 ```bash
 python main.py --available-slots --show-total-hours
+# or using short form
+python main.py -a -t
+
+# With minimum duration of 2 hours
+python main.py -a 2 -t
 ```
 
 ### Output in JSON Format
@@ -87,14 +106,25 @@ python main.py --available-slots --include-holidays
 ## Example Output
 
 ```
-Finding available time slots (weekdays, 10:00-18:00) for the next 2 weeks
+Finding available time slots (weekdays, 10:00-18:00) of 1.0+ hours for the next 2 weeks
 Found 15 available time slots:
-2025-03-13(Thu) 10:30 - 12:00
+2025-03-13(木) 10:30 - 12:00
+2025-03-13(木) 13:30 - 17:30
+2025-03-14(金) 10:30 - 15:00
+...
+
+合計空き時間: 42.5時間
+```
+
+With English weekdays and 2+ hour requirement:
+```
+Finding available time slots (weekdays, 10:00-18:00) of 2.0+ hours for the next 2 weeks
+Found 8 available time slots:
 2025-03-13(Thu) 13:30 - 17:30
 2025-03-14(Fri) 10:30 - 15:00
 ...
 
-Total available hours: 42.5 hours
+Total available hours: 31.0 hours
 ```
 
 ## License
