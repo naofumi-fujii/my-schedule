@@ -316,7 +316,9 @@ def main():
     # Handle available slots option
     if getattr(flags, "available_slots", False) is not False:
         include_holidays = getattr(flags, "include_holidays", False)
-        min_hours = float(getattr(flags, "available_slots", 1))
+        # 引数なしの場合は1.0時間をデフォルト値として使用
+        available_slots_value = getattr(flags, "available_slots", None)
+        min_hours = 1.0 if available_slots_value is None else float(available_slots_value)
         print(
             f"Finding available time slots (weekdays, 10:00-18:00) of {min_hours}+ hours for the next 2 weeks"
         )
