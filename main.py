@@ -243,18 +243,24 @@ def find_available_slots(service, start_date, end_date, include_holidays=False, 
             # Find gaps between busy periods
             if not day_busy_periods:
                 # Entire business day is free
-                available_slots.append((effective_day_start, effective_day_end))
+                duration = (effective_day_end - effective_day_start).total_seconds() / 3600
+                available_slots.append({
+                    'start': effective_day_start,
+                    'end': effective_day_end,
+                    'duration': duration
+                })
             else:
                 # Check time before first meeting
                 if day_busy_periods[0][0] > effective_day_start + datetime.timedelta(
                     hours=min_hours
                 ):  # At least min_hours after effective start
-                    available_slots.append(
-                        (
-                            effective_day_start,
-                            day_busy_periods[0][0] - datetime.timedelta(minutes=30),
-                        )
-                    )
+                    gap_end = day_busy_periods[0][0] - datetime.timedelta(minutes=30)
+                    duration = (gap_end - effective_day_start).total_seconds() / 3600
+                    available_slots.append({
+                        'start': effective_day_start,
+                        'end': gap_end,
+                        'duration': duration
+                    })
 
                 # Check between meetings
                 for i in range(len(day_busy_periods) - 1):
@@ -267,36 +273,66 @@ def find_available_slots(service, start_date, end_date, include_holidays=False, 
 
                     # If gap is at least the minimum required hours
                     if gap_end - gap_start >= datetime.timedelta(hours=min_hours):
-                        available_slots.append((gap_start, gap_end))
+                        duration = (gap_end - gap_start).total_seconds() / 3600
+                        available_slots.append({
+                            'start': gap_start,
+                            'end': gap_end,
+                            'duration': duration
+                        })
 
                 # Check time after last meeting
                 if effective_day_end > day_busy_periods[-1][1] + datetime.timedelta(
                     hours=min_hours
                 ):  # At least min_hours before effective end
-                    available_slots.append(
-                        (
-                            day_busy_periods[-1][1] + datetime.timedelta(minutes=30),
-                            effective_day_end,
-                        )
-                    )
+                    gap_start = day_busy_periods[-1][1] + datetime.timedelta(minutes=30)
+                    duration = (effective_day_end - gap_start).total_seconds() / 3600
+                    available_slots.append({
+                        'start': gap_start,
+                        'end': effective_day_end,
+                        'duration': duration
+                    })
 
         current_date += datetime.timedelta(days=1)
 
     return available_slots
 
 
+def format_output(slots, format='text', min_duration=1.0, include_holidays=False):
+    """出力をフォーマット"""
+    if format == 'json':
+        return json.dumps({
+            'slots': [
+                {
+                    'start': slot['start'].isoformat(),
+                    'end': slot['end'].isoformat(),
+                    'duration': slot['duration']
+                }
+                for slot in slots
+            ],
+            'total_hours': sum(slot['duration'] for slot in slots)
+        })
+    else:
+        output = []
+        output.append(f"Finding available time slots (weekdays, 10:00-18:00) of {min_duration}+ hours for the next 2 weeks")
+        if not include_holidays:
+            output.append("Holidays are excluded. Use --include-holidays to include them.")
+        output.append(f"Found {len(slots)} available time slots:")
+        output.extend(
+            f"{slot['start'].strftime('%Y-%m-%d(%a) %H:%M')} - {slot['end'].strftime('%H:%M')}"
+            for slot in slots
+        )
+        output.append(f"\n合計空き時間: {sum(slot['duration'] for slot in slots)}時間")
+        return '\n'.join(output)
+
+
 def main():
-    """Shows basic usage of the Google Calendar API.
+    """メイン処理"""
+    parser = argparse.ArgumentParser(description='Google Calendarの予定を確認し、空き時間を探すツール')
+    parser.add_argument('--format', choices=['text', 'json'], default='text', help='出力形式 (text/json)')
+    parser.add_argument('--available-slots', action='store_true', help='空き時間を探す')
+    parser.add_argument('--include-holidays', action='store_true', help='祝日を含める')
+    args = parser.parse_args()
 
-    Creates a Google Calendar API service object and outputs events for the next
-    2 weeks on the user's calendar.
-    """
-    # Parse arguments when main is called
-    global flags
-    if flags is None:
-        flags = parser.parse_args()
-
-    # 引数が指定されていない場合はヘルプを表示して終了
     if len(sys.argv) == 1:
         parser.print_help()
         return
@@ -305,244 +341,11 @@ def main():
     http = credentials.authorize(httplib2.Http())
     service = discovery.build("calendar", "v3", http=http)
 
-    now = datetime.datetime.utcnow()
-    two_weeks_later = now + datetime.timedelta(days=14)
-
-    now_str = now.isoformat() + "Z"  # 'Z' indicates UTC time
-    two_weeks_later_str = two_weeks_later.isoformat() + "Z"
-
-    # Handle available slots option
-    if getattr(flags, "available_slots", False) is not False:
-        include_holidays = getattr(flags, "include_holidays", False)
-        # 引数なしの場合は1.0時間をデフォルト値として使用
-        available_slots_value = getattr(flags, "available_slots", None)
-        min_hours = 1.0 if available_slots_value is None else float(available_slots_value)
-        print(
-            f"Finding available time slots (weekdays, 10:00-18:00) of {min_hours}+ hours for the next 2 weeks"
-        )
-        if not include_holidays:
-            print("Holidays are excluded. Use --include-holidays to include them.")
-
-        available_slots = find_available_slots(
-            service, now, two_weeks_later, include_holidays, min_hours
-        )
-
-        output_format = getattr(flags, "format", "text")
-        jst = pytz.timezone("Asia/Tokyo")
-
-        if not available_slots:
-            if output_format == "json":
-                print(json.dumps({"message": "No available time slots found."}))
-            else:
-                print("No available time slots found.")
-        else:
-            if output_format == "json":
-                json_slots = []
-                total_minutes = 0
-
-                for start, end in available_slots:
-                    # Calculate duration
-                    duration_minutes = int((end - start).total_seconds() / 60)
-                    total_minutes += duration_minutes
-
-                    # Format as JSON
-                    # Get day of week in Japanese or English based on setting
-                    weekday_ja = ["月", "火", "水", "木", "金", "土", "日"]
-                    weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
-                    if getattr(flags, "weekday_lang", "ja") == "ja":
-                        weekday_display = weekday_ja[start.weekday()]
-                    else:
-                        weekday_display = weekday_en[start.weekday()]
-
-                    json_slots.append(
-                        {
-                            "start": {
-                                "date": start.strftime("%Y-%m-%d"),
-                                "time": start.strftime("%H:%M"),
-                                "formatted": start.strftime("%Y-%m-%d %H:%M"),
-                                "weekday": weekday_display,
-                            },
-                            "end": {
-                                "date": end.strftime("%Y-%m-%d"),
-                                "time": end.strftime("%H:%M"),
-                                "formatted": end.strftime("%Y-%m-%d %H:%M"),
-                                "weekday": weekday_display,
-                            },
-                            "duration_minutes": duration_minutes,
-                        }
-                    )
-
-                result = {"available_slots": json_slots}
-
-                # Add total hours if requested
-                if getattr(flags, "show_total_hours", False):
-                    result["total_hours"] = round(total_minutes / 60, 1)
-                    result["total_minutes"] = total_minutes
-
-                print(json.dumps(result, ensure_ascii=False, indent=2))
-            else:
-                # Text format
-                print(f"Found {len(available_slots)} available time slots:")
-
-                # Calculate total duration if needed
-                total_minutes = 0
-
-                for start, end in available_slots:
-                    duration_minutes = int((end - start).total_seconds() / 60)
-                    total_minutes += duration_minutes
-                    # Get day of week in Japanese or English based on setting
-                    weekday_ja = ["月", "火", "水", "木", "金", "土", "日"]
-                    weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
-                    if getattr(flags, "weekday_lang", "ja") == "ja":
-                        weekday_display = weekday_ja[start.weekday()]
-                    else:
-                        weekday_display = weekday_en[start.weekday()]
-
-                    # Always show date, time without individual slot duration
-                    print(
-                        f"{start.strftime('%Y-%m-%d')}({weekday_display}) {start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
-                    )
-
-                # Show total hours if requested
-                if getattr(flags, "show_total_hours", False):
-                    total_hours = total_minutes / 60
-                    if getattr(flags, "weekday_lang", "ja") == "ja":
-                        print(f"\n合計空き時間: {total_hours:.1f}時間")
-                    else:
-                        print(f"\nTotal available hours: {total_hours:.1f} hours")
-
-        return
-
-    # Otherwise show the calendar events
-    include_holidays = getattr(flags, "include_holidays", False)
-    print("Getting events for the next 2 weeks")
-    if not include_holidays:
-        print("Holidays are excluded. Use --include-holidays to include them.")
-
-    eventsResult = (
-        service.events()
-        .list(
-            calendarId="primary",
-            timeMin=now_str,
-            timeMax=two_weeks_later_str,
-            singleEvents=True,
-            orderBy="startTime",
-        )
-        .execute()
-    )
-    events = eventsResult.get("items", [])
-
-    # Filter out events on holidays if needed
-    if not include_holidays:
-        filtered_events = []
-        for event in events:
-            # Get event start date
-            start_str = event["start"].get("dateTime", event["start"].get("date"))
-
-            # Parse the date
-            if "T" in start_str:  # dateTime format
-                event_date = date_parser.parse(start_str)
-            else:  # date format
-                event_date = datetime.datetime.strptime(start_str, "%Y-%m-%d")
-                event_date = datetime.datetime.combine(
-                    event_date.date(), datetime.time(0, 0, 0, tzinfo=pytz.UTC)
-                )
-
-            # Skip events on holidays
-            if not is_holiday(service, event_date):
-                filtered_events.append(event)
-
-        events = filtered_events
-
-    jst = pytz.timezone("Asia/Tokyo")
-    output_format = getattr(flags, "format", "text")  # デフォルトはテキスト形式
-
-    if not events:
-        if output_format == "json":
-            print(json.dumps({"message": "No upcoming events found."}))
-        else:
-            print("No upcoming events found.")
-    else:
-        if output_format == "json":
-            # JSON形式で出力する配列を準備
-            json_events = []
-
-            for event in events:
-                # イベントの開始・終了時間を取得
-                start_str = event["start"].get("dateTime", event["start"].get("date"))
-                end_str = event["end"].get("dateTime", event["end"].get("date"))
-
-                # 日時をパースして整形（日本時間に変換）
-                if "T" in start_str:  # dateTimeの場合
-                    start_dt = date_parser.parse(start_str)
-                    start_dt_jst = start_dt.astimezone(jst)
-                    start_formatted = start_dt_jst.strftime("%Y-%m-%d %H:%M")
-                    start_date = start_dt_jst.strftime("%Y-%m-%d")
-                    start_time = start_dt_jst.strftime("%H:%M")
-                else:  # dateのみの場合
-                    start_formatted = start_str
-                    start_date = start_str
-                    start_time = None
-
-                if "T" in end_str:  # dateTimeの場合
-                    end_dt = date_parser.parse(end_str)
-                    end_dt_jst = end_dt.astimezone(jst)
-                    end_formatted = end_dt_jst.strftime("%Y-%m-%d %H:%M")
-                    end_date = end_dt_jst.strftime("%Y-%m-%d")
-                    end_time = end_dt_jst.strftime("%H:%M")
-                else:  # dateのみの場合
-                    end_formatted = end_str
-                    end_date = end_str
-                    end_time = None
-
-                # JSONオブジェクトを作成
-                event_json = {
-                    "summary": event.get("summary", ""),
-                    "start": {
-                        "date": start_date,
-                        "time": start_time,
-                        "formatted": start_formatted,
-                    },
-                    "end": {
-                        "date": end_date,
-                        "time": end_time,
-                        "formatted": end_formatted,
-                    },
-                    "location": event.get("location", ""),
-                    "description": event.get("description", ""),
-                    "htmlLink": event.get("htmlLink", ""),
-                }
-
-                json_events.append(event_json)
-
-            # JSON形式で出力
-            print(json.dumps({"events": json_events}, ensure_ascii=False, indent=2))
-        else:
-            # テキスト形式で出力
-            for event in events:
-                start_str = event["start"].get("dateTime", event["start"].get("date"))
-                end_str = event["end"].get("dateTime", event["end"].get("date"))
-
-                # 日時をパースして整形（日本時間に変換）
-                if "T" in start_str:  # dateTimeの場合
-                    start_dt = date_parser.parse(start_str)
-                    start_dt_jst = start_dt.astimezone(jst)
-                    start_formatted = start_dt_jst.strftime("%Y-%m-%d %H:%M")
-                else:  # dateのみの場合
-                    start_formatted = start_str
-
-                if "T" in end_str:  # dateTimeの場合
-                    end_dt = date_parser.parse(end_str)
-                    end_dt_jst = end_dt.astimezone(jst)
-                    end_formatted = end_dt_jst.strftime("%Y-%m-%d %H:%M")
-                else:  # dateのみの場合
-                    end_formatted = end_str
-
-                print(
-                    f"開始: {start_formatted} - 終了: {end_formatted} | {event['summary']}"
-                )
+    if args.available_slots:
+        now = datetime.datetime.utcnow()
+        two_weeks_later = now + datetime.timedelta(days=14)
+        slots = find_available_slots(service, now, two_weeks_later, include_holidays=args.include_holidays)
+        print(format_output(slots, format=args.format, include_holidays=args.include_holidays))
 
 
 if __name__ == "__main__":
