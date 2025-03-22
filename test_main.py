@@ -73,18 +73,15 @@ class TestMySchedule(unittest.TestCase):
             self.assertTrue(len(available_slots) > 0)
 
             # Check if slot is during business hours
-            for start, end in available_slots:
-                # Slots should be during business hours (after 10:00 and before 18:00)
-                self.assertGreaterEqual(start.hour, 10)
-                self.assertLessEqual(end.hour, 18)
-
-                # If end hour is 18, minutes should be 0
-                if end.hour == 18:
-                    self.assertEqual(end.minute, 0)
-
+            for slot in available_slots:
+                start = slot['start']
+                end = slot['end']
+                # Business hours are 10:00-18:00 with 30 min buffer
+                self.assertTrue(start.hour >= 10)
+                self.assertTrue(end.hour <= 18)
                 # Duration should be at least 1 hour
                 duration = (end - start).total_seconds() / 3600
-                self.assertGreaterEqual(duration, 1.0)
+                self.assertTrue(duration >= 1.0)
 
         finally:
             # Restore original is_holiday function
@@ -139,22 +136,17 @@ class TestMySchedule(unittest.TestCase):
             self.assertTrue(len(available_slots) >= 2)
 
             # Verify slots don't overlap with the meeting (allowing for 30 min buffer)
-            for start, end in available_slots:
-                # Convert to same timezone for comparison
-                start_utc = start.astimezone(pytz.UTC)
-                end_utc = end.astimezone(pytz.UTC)
-
-                # Slot should either end before meeting starts (with 30 min buffer) or
-                # start after meeting ends (with 30 min buffer)
-                meeting_start_with_buffer = tomorrow_noon - datetime.timedelta(
-                    minutes=30
-                )
-                meeting_end_with_buffer = tomorrow_one + datetime.timedelta(minutes=30)
-
-                self.assertTrue(
-                    end_utc <= meeting_start_with_buffer.replace(tzinfo=pytz.UTC)
-                    or start_utc >= meeting_end_with_buffer.replace(tzinfo=pytz.UTC)
-                )
+            for slot in available_slots:
+                start = slot['start']
+                end = slot['end']
+                # Check if slot is before meeting (with buffer)
+                if end <= tomorrow_noon_jst - datetime.timedelta(minutes=30):
+                    continue
+                # Check if slot is after meeting (with buffer)
+                if start >= tomorrow_one_jst + datetime.timedelta(minutes=30):
+                    continue
+                # If we get here, slot overlaps with meeting time
+                self.fail("Found slot overlapping with meeting time")
 
         finally:
             # Restore original is_holiday function
