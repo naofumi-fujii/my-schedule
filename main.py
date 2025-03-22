@@ -329,7 +329,7 @@ def main():
     """メイン処理"""
     parser = argparse.ArgumentParser(description='Google Calendarの予定を確認し、空き時間を探すツール')
     parser.add_argument('--format', choices=['text', 'json'], default='text', help='出力形式 (text/json)')
-    parser.add_argument('--available-slots', action='store_true', help='空き時間を探す')
+    parser.add_argument('--available-slots', nargs='?', const=1.0, type=float, help='空き時間を探す（最小時間を指定可能、デフォルト: 1.0時間）')
     parser.add_argument('--include-holidays', action='store_true', help='祝日を含める')
     args = parser.parse_args()
 
@@ -341,11 +341,11 @@ def main():
     http = credentials.authorize(httplib2.Http())
     service = discovery.build("calendar", "v3", http=http)
 
-    if args.available_slots:
+    if args.available_slots is not None:
         now = datetime.datetime.utcnow()
         two_weeks_later = now + datetime.timedelta(days=14)
-        slots = find_available_slots(service, now, two_weeks_later, include_holidays=args.include_holidays)
-        print(format_output(slots, format=args.format, include_holidays=args.include_holidays))
+        slots = find_available_slots(service, now, two_weeks_later, include_holidays=args.include_holidays, min_hours=args.available_slots)
+        print(format_output(slots, format=args.format, min_duration=args.available_slots, include_holidays=args.include_holidays))
 
 
 if __name__ == "__main__":
