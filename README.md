@@ -40,12 +40,26 @@ python main.py --help
 ```bash
 # デフォルト（1時間以上の空き時間）
 python main.py --available-slots
+# または短縮形
+python main.py -a
 
 # 2時間以上の空き時間をJSON形式で表示
 python main.py --available-slots 2 --format json
+# または短縮形
+python main.py -a 2 -f json
 
 # 祝日を含めて表示
 python main.py --available-slots --include-holidays
+
+# 合計時間を表示
+python main.py --available-slots --show-total-hours
+# または短縮形
+python main.py -a -t
+
+# 英語表記の曜日で表示
+python main.py --available-slots --weekday-lang en
+# または短縮形
+python main.py -a -w en
 ```
 
 ### 予定の表示
@@ -55,15 +69,24 @@ python main.py
 
 # JSON形式で表示
 python main.py --format json
+# または短縮形
+python main.py -f json
 
 # 祝日を含めて表示
 python main.py --include-holidays
+
+# 英語表記の曜日で表示
+python main.py --weekday-lang en
+# または短縮形
+python main.py -w en
 ```
 
 ## オプション
 
-- `--format`: 出力形式を指定（text/json）
-- `--available-slots`: 空き時間を探す
+- `--format, -f`: 出力形式を指定（text/json）
+- `--available-slots, -a`: 空き時間を探す（オプションで最小時間を指定可能）
+- `--show-total-hours, -t`: 空き時間の合計時間を表示（`--available-slots`と併用）
+- `--weekday-lang, -w`: 曜日の言語（ja: 日本語, en: 英語）
 - `--include-holidays`: 祝日を含める
 
 ## 出力形式
