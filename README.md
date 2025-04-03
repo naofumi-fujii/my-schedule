@@ -122,7 +122,15 @@ Found 8 available time slots:
 
 ### テストの実行
 ```bash
+# 通常のテスト実行
 python -m pytest test_main.py -v
+
+# コードカバレッジ付きでテスト実行
+python -m pytest --cov=main test_main.py
+
+# HTML形式のカバレッジレポート生成
+python -m pytest --cov=main --cov-report=html test_main.py
+# レポートはhtmlcov/index.htmlで閲覧可能
 ```
 
 ### コードの品質管理
@@ -132,6 +140,9 @@ black main.py test_main.py
 
 # リンター
 flake8 main.py test_main.py
+
+# 型チェック
+mypy main.py
 ```
 
 ## License

@@ -21,3 +21,9 @@ build/
 
 # OS specific
 .DS_Store
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover

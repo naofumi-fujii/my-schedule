@@ -9,6 +9,9 @@
 - JSON output: `python main.py --format json` or `python main.py -f json`
 - Set weekday language: `python main.py --weekday-lang en` or `python main.py -w en`
 - Include holidays: `python main.py --include-holidays` (holidays are excluded by default)
+- Run tests: `python -m pytest test_main.py -v`
+- Run tests with coverage: `python -m pytest --cov=main test_main.py`
+- Generate HTML coverage report: `python -m pytest --cov=main --cov-report=html test_main.py`
 - Lint code: `python -m flake8 main.py` (recommended to install)
 - Type check: `python -m mypy main.py` (recommended to install)
 
