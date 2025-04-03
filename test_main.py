@@ -2,14 +2,92 @@ import unittest
 from unittest.mock import patch, MagicMock
 import datetime
 import pytz
+import json
 from io import StringIO
 
-from main import find_available_slots
+from main import (
+    find_available_slots, 
+    to_jst, 
+    to_utc_str, 
+    get_day_start_end,
+    get_business_hours,
+    format_output_json,
+    format_output_text
+)
 
 
 class TestMySchedule(unittest.TestCase):
     def setUp(self):
         self.jst = pytz.timezone("Asia/Tokyo")
+        
+    def test_timezone_utilities(self):
+        """タイムゾーン関連ユーティリティ関数のテスト"""
+        # to_jst関数のテスト
+        utc_dt = datetime.datetime(2025, 4, 1, 10, 0, 0, tzinfo=pytz.UTC)
+        jst_dt = to_jst(utc_dt)
+        self.assertEqual(jst_dt.hour, 19)  # UTC+9時間
+        self.assertEqual(jst_dt.tzinfo.zone, "Asia/Tokyo")
+        
+        # タイムゾーン情報なしのdatetimeを渡した場合
+        naive_dt = datetime.datetime(2025, 4, 1, 10, 0, 0)
+        jst_dt2 = to_jst(naive_dt)
+        self.assertEqual(jst_dt2.hour, 19)  # UTCとして扱われてUTC+9時間
+        self.assertEqual(jst_dt2.tzinfo.zone, "Asia/Tokyo")
+        
+        # to_utc_str関数のテスト
+        jst_dt = self.jst.localize(datetime.datetime(2025, 4, 1, 19, 0, 0))
+        utc_str = to_utc_str(jst_dt)
+        self.assertTrue("2025-04-01T10:00:00" in utc_str)
+        
+        # get_day_start_end関数のテスト
+        dt = self.jst.localize(datetime.datetime(2025, 4, 1, 12, 30, 0))
+        start, end = get_day_start_end(dt)
+        self.assertEqual(start.hour, 0)
+        self.assertEqual(start.minute, 0)
+        self.assertEqual(end.day, 2)  # 次の日
+        
+        # get_business_hours関数のテスト
+        dt = self.jst.localize(datetime.datetime(2025, 4, 1, 12, 30, 0))
+        start, end, eff_start, eff_end = get_business_hours(dt)
+        self.assertEqual(start.hour, 10)  # 営業開始10:00
+        self.assertEqual(end.hour, 18)    # 営業終了18:00
+        self.assertEqual(eff_start.hour, 10)  # 実効開始10:30
+        self.assertEqual(eff_start.minute, 30)
+        self.assertEqual(eff_end.hour, 17)    # 実効終了17:30
+        self.assertEqual(eff_end.minute, 30)
+        
+    def test_format_output(self):
+        """出力フォーマット関数のテスト"""
+        # テスト用の空き時間データ
+        jst = pytz.timezone("Asia/Tokyo")
+        slots = [
+            {
+                'start': jst.localize(datetime.datetime(2025, 4, 1, 10, 30, 0)),
+                'end': jst.localize(datetime.datetime(2025, 4, 1, 12, 30, 0)),
+                'duration': 2.0
+            },
+            {
+                'start': jst.localize(datetime.datetime(2025, 4, 1, 14, 30, 0)),
+                'end': jst.localize(datetime.datetime(2025, 4, 1, 17, 30, 0)),
+                'duration': 3.0
+            }
+        ]
+        
+        # JSON形式出力のテスト
+        json_output = format_output_json(slots)
+        data = json.loads(json_output)
+        self.assertEqual(len(data['slots']), 2)
+        self.assertEqual(data['total_hours'], 5.0)
+        
+        # テキスト形式出力のテスト
+        text_output = format_output_text(slots, 1.0, False, True, 'ja')
+        self.assertIn("Finding available time slots", text_output)
+        self.assertIn("Found 2 available time slots", text_output)
+        self.assertIn("合計空き時間: 5.00時間", text_output)
+        
+        # 合計時間表示なしのテスト
+        text_output_no_total = format_output_text(slots, 1.0, False, False, 'ja')
+        self.assertNotIn("合計空き時間", text_output_no_total)
 
     @patch("sys.stdout", new_callable=StringIO)
     @patch("main.get_credentials")
