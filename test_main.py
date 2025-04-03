@@ -105,17 +105,15 @@ class TestMySchedule(unittest.TestCase):
             if tomorrow.weekday() >= 5:  # 5=Saturday, 6=Sunday
                 tomorrow = tomorrow + datetime.timedelta(days=(8 - tomorrow.weekday()))
 
-            # Create a day with one meeting from 12:00-13:00
-            tomorrow_noon = tomorrow.replace(hour=12, minute=0, second=0)
-            tomorrow_noon_jst = tomorrow_noon.replace(tzinfo=pytz.UTC).astimezone(
-                self.jst
-            )
+            # Create a time in JST timezone directly (for 12:00-13:00 JST business hours)
+            jst = pytz.timezone("Asia/Tokyo")
+            tomorrow_jst = tomorrow.replace(tzinfo=pytz.UTC).astimezone(jst)
+            
+            # Set the meeting to occur during business hours (12:00-13:00 JST)
+            tomorrow_noon_jst = tomorrow_jst.replace(hour=12, minute=0, second=0, microsecond=0)
             tomorrow_noon_jst_str = tomorrow_noon_jst.isoformat()
-
-            tomorrow_one = tomorrow.replace(hour=13, minute=0, second=0)
-            tomorrow_one_jst = tomorrow_one.replace(tzinfo=pytz.UTC).astimezone(
-                self.jst
-            )
+            
+            tomorrow_one_jst = tomorrow_jst.replace(hour=13, minute=0, second=0, microsecond=0)
             tomorrow_one_jst_str = tomorrow_one_jst.isoformat()
 
             # Mock calendar with one meeting
@@ -128,12 +126,13 @@ class TestMySchedule(unittest.TestCase):
                 ]
             }
 
-            # Find available slots
+            # Find available slots (use min_hours=1.0 explicitly)
             day_after = tomorrow + datetime.timedelta(days=1)
-            available_slots = find_available_slots(mock_service, tomorrow, day_after)
-
+            available_slots = find_available_slots(mock_service, tomorrow, day_after, min_hours=1.0)
+            
             # Should find slots before and after the meeting
-            self.assertTrue(len(available_slots) >= 2)
+            self.assertTrue(len(available_slots) >= 2, 
+                           f"Expected at least 2 slots but found {len(available_slots)}")
 
             # Verify slots don't overlap with the meeting (allowing for 30 min buffer)
             for slot in available_slots:
