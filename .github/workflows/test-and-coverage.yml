@@ -34,9 +34,3 @@ jobs:
     - name: Check coverage threshold
       run: |
         python -m coverage report --fail-under=80
-        
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
