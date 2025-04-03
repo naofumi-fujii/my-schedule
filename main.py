@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import httplib2
 import os
@@ -297,7 +298,7 @@ def find_available_slots(service, start_date, end_date, include_holidays=False, 
     return available_slots
 
 
-def format_output(slots, format='text', min_duration=1.0, include_holidays=False):
+def format_output(slots, format='text', min_duration=1.0, include_holidays=False, show_total_hours=False, weekday_lang='ja'):
     """出力をフォーマット"""
     if format == 'json':
         return json.dumps({
@@ -313,24 +314,35 @@ def format_output(slots, format='text', min_duration=1.0, include_holidays=False
         })
     else:
         output = []
-        output.append(f"Finding available time slots (weekdays, 10:00-18:00) of {min_duration}+ hours for the next 2 weeks")
+        output.append("Finding available time slots (weekdays, 10:00-18:00) of {}+ hours for the next 2 weeks".format(min_duration))
         if not include_holidays:
             output.append("Holidays are excluded. Use --include-holidays to include them.")
-        output.append(f"Found {len(slots)} available time slots:")
-        output.extend(
-            f"{slot['start'].strftime('%Y-%m-%d(%a) %H:%M')} - {slot['end'].strftime('%H:%M')}"
-            for slot in slots
-        )
-        output.append(f"\n合計空き時間: {sum(slot['duration'] for slot in slots)}時間")
+        output.append("Found {} available time slots:".format(len(slots)))
+        
+        # Format weekday based on language
+        date_format = '%Y-%m-%d(%a) %H:%M' if weekday_lang == 'en' else '%Y-%m-%d(%a) %H:%M'
+        
+        for slot in slots:
+            output.append("{} - {}".format(
+                slot['start'].strftime(date_format),
+                slot['end'].strftime('%H:%M')
+            ))
+        
+        # Show total hours if requested
+        if show_total_hours:
+            output.append("\n合計空き時間: {}時間".format(sum(slot['duration'] for slot in slots)))
+            
         return '\n'.join(output)
 
 
 def main():
     """メイン処理"""
     parser = argparse.ArgumentParser(description='Google Calendarの予定を確認し、空き時間を探すツール')
-    parser.add_argument('--format', choices=['text', 'json'], default='text', help='出力形式 (text/json)')
-    parser.add_argument('--available-slots', nargs='?', const=1.0, type=float, help='空き時間を探す（最小時間を指定可能、デフォルト: 1.0時間）')
+    parser.add_argument('--format', '-f', choices=['text', 'json'], default='text', help='出力形式 (text/json)')
+    parser.add_argument('--available-slots', '-a', nargs='?', const=1.0, type=float, help='空き時間を探す（最小時間を指定可能、デフォルト: 1.0時間）')
+    parser.add_argument('--show-total-hours', '-t', action='store_true', help='空き時間の合計を表示する')
     parser.add_argument('--include-holidays', action='store_true', help='祝日を含める')
+    parser.add_argument('--weekday-lang', '-w', default='ja', choices=['ja', 'en'], help='曜日の言語: ja (日本語) または en (英語)')
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -345,7 +357,14 @@ def main():
         now = datetime.datetime.utcnow()
         two_weeks_later = now + datetime.timedelta(days=14)
         slots = find_available_slots(service, now, two_weeks_later, include_holidays=args.include_holidays, min_hours=args.available_slots)
-        print(format_output(slots, format=args.format, min_duration=args.available_slots, include_holidays=args.include_holidays))
+        print(format_output(
+            slots, 
+            format=args.format, 
+            min_duration=args.available_slots, 
+            include_holidays=args.include_holidays,
+            show_total_hours=args.show_total_hours,
+            weekday_lang=args.weekday_lang
+        ))
 
 
 if __name__ == "__main__":
