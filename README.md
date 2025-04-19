@@ -1,4 +1,4 @@
-# My Schedule
+# My Schedule CLI
 
 Google Calendarの予定を確認し、空き時間を探すツールです。
 
